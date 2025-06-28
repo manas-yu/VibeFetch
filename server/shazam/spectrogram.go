@@ -55,6 +55,7 @@ func Spectrogram(sample []float64, sampleRate int) ([][]complex128, error) {
 // LowPassFilter is a first-order low-pass filter that attenuates high
 // frequencies above the cutoffFrequency.
 // It uses the transfer function H(s) = 1 / (1 + sRC), where RC is the time constant.
+//y[n]=α⋅x[n]+(1−α)⋅y[n−1]
 func LowPassFilter(cutoffFrequency, sampleRate float64, input []float64) []float64 {
 	rc := 1.0 / (2 * math.Pi * cutoffFrequency)
 	dt := 1.0 / sampleRate
@@ -76,6 +77,7 @@ func LowPassFilter(cutoffFrequency, sampleRate float64, input []float64) []float
 }
 
 // Downsample downsamples the input audio from originalSampleRate to targetSampleRate
+
 func Downsample(input []float64, originalSampleRate, targetSampleRate int) ([]float64, error) {
 	if targetSampleRate <= 0 || originalSampleRate <= 0 {
 		return nil, errors.New("sample rates must be positive")

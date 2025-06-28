@@ -163,6 +163,7 @@ func serve(protocol, port string) {
 	server.OnEvent("/", "newDownload", handleSongDownload)
 	server.OnEvent("/", "newRecording", handleNewRecording)
 	server.OnEvent("/", "newFingerprint", handleNewFingerprint)
+	server.OnEvent("/", "getAllYouTubeIDs", handleAllYouTubeIDs)
 
 	server.OnError("/", func(s socketio.Conn, e error) {
 		log.Println("meet error:", e)

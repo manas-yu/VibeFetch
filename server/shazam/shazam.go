@@ -10,6 +10,8 @@ import (
 	"song-recognition/utils"
 	"sort"
 	"time"
+	"encoding/json"
+	"github.com/mdobak/go-xerrors"
 )
 
 type Match struct {
@@ -21,6 +23,40 @@ type Match struct {
 	Score      float64
 }
 
+// Define the wrapper for the output JSON
+type FingerprintWrapper struct {
+	Fingerprint map[uint32]uint32 `json:"fingerprint"`
+}
+
+func chut( fingerprintData string) string {
+	var data struct {
+		Fingerprint map[uint32]uint32 `json:"fingerprint"`
+	}
+	if err := json.Unmarshal([]byte(fingerprintData), &data); err != nil {
+		err := xerrors.New(err)
+		fmt.Println(err)
+		return ""
+	}
+
+	matches, _, err := FindMatchesFGP(data.Fingerprint)
+	if err != nil {
+		err := xerrors.New(err)
+		fmt.Println(err)
+	}
+
+	jsonData, err := json.Marshal(matches)
+	if len(matches) > 10 {
+		jsonData, _ = json.Marshal(matches[:10])
+	}
+
+	if err != nil {
+		err := xerrors.New(err)
+		fmt.Println(err)
+		return ""
+	}
+	fmt.Println(string(jsonData))
+	return string(jsonData);
+}
 // FindMatches analyzes the audio sample to find matching songs in the database.
 func FindMatches(audioSample []float64, audioDuration float64, sampleRate int) ([]Match, time.Duration, error) {
 	startTime := time.Now()
@@ -32,14 +68,33 @@ func FindMatches(audioSample []float64, audioDuration float64, sampleRate int) (
 
 	peaks := ExtractPeaks(spectrogram, audioDuration)
 	sampleFingerprint := Fingerprint(peaks, utils.GenerateUniqueID())
+	fingerprintArray := []interface{}{}
+	for address, couple := range sampleFingerprint {
+		entry := map[string]interface{}{
+			"address":    address,
+			"anchorTime": couple.AnchorTimeMs,
+		}
+		fingerprintArray = append(fingerprintArray, entry)
+	}
+	fmt.Println(fingerprintArray)
+	
+
 
 	sampleFingerprintMap := make(map[uint32]uint32)
 	for address, couple := range sampleFingerprint {
 		sampleFingerprintMap[address] = couple.AnchorTimeMs
 	}
+	output := FingerprintWrapper{Fingerprint: sampleFingerprintMap}
+	jsonBytes, err := json.Marshal(output)
+	if err != nil {
+		panic(err)
+	}
 
+	// Print the JSON string
+	chut(string(jsonBytes))
+	
 	matches, _, err := FindMatchesFGP(sampleFingerprintMap)
-
+	
 	return matches, time.Since(startTime), nil
 }
 
@@ -47,7 +102,6 @@ func FindMatches(audioSample []float64, audioDuration float64, sampleRate int) (
 func FindMatchesFGP(sampleFingerprint map[uint32]uint32) ([]Match, time.Duration, error) {
 	startTime := time.Now()
 	logger := utils.GetLogger()
-
 	addresses := make([]uint32, 0, len(sampleFingerprint))
 	for address := range sampleFingerprint {
 		addresses = append(addresses, address)
@@ -89,7 +143,7 @@ func FindMatchesFGP(sampleFingerprint map[uint32]uint32) ([]Match, time.Duration
 	// matches = filterMatches(10, matches, targetZones)
 
 	scores := analyzeRelativeTiming(matches)
-
+	//fmt.Println(scores)
 	var matchList []Match
 
 	for songID, points := range scores {
