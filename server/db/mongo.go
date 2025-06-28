@@ -199,3 +199,30 @@ func (db *MongoClient) DeleteCollection(collectionName string) error {
 	}
 	return nil
 }
+
+// GetAllYouTubeIDs retrieves all YouTube IDs from the songs collection
+func (db *MongoClient) GetAllYouTubeIDs() ([]string, error) {
+    songsCollection := db.client.Database("song-recognition").Collection("songs")
+    filter := bson.M{"ytID": bson.M{"$ne": ""}}
+    cursor, err := songsCollection.Find(context.Background(), filter)
+    if err != nil {
+        return nil, fmt.Errorf("error querying YouTube IDs: %v", err)
+    }
+    defer cursor.Close(context.Background())
+
+    var ytIDs []string
+    for cursor.Next(context.Background()) {
+        var song bson.M
+        if err := cursor.Decode(&song); err != nil {
+            return nil, fmt.Errorf("error decoding song document: %v", err)
+        }
+        if ytID, ok := song["ytID"].(string); ok && ytID != "" {
+            ytIDs = append(ytIDs, ytID)
+        }
+    }
+    if err := cursor.Err(); err != nil {
+        return nil, fmt.Errorf("cursor error: %v", err)
+    }
+    return ytIDs, nil
+}
+

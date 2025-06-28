@@ -205,3 +205,22 @@ func (db *SQLiteClient) DeleteCollection(collectionName string) error {
 	}
 	return nil
 }
+
+// GetAllYouTubeIDs retrieves all YouTube IDs from the songs table
+func (db *SQLiteClient) GetAllYouTubeIDs() ([]string, error) {
+	rows, err := db.db.Query("SELECT ytID FROM songs WHERE ytID IS NOT NULL AND ytID != ''")
+	if err != nil {
+		return nil, fmt.Errorf("error querying YouTube IDs: %v", err)
+	}
+	defer rows.Close()
+
+	var ytIDs []string
+	for rows.Next() {
+		var ytID string
+		if err := rows.Scan(&ytID); err != nil {
+			return nil, fmt.Errorf("error scanning YouTube ID: %v", err)
+		}
+		ytIDs = append(ytIDs, ytID)
+	}
+	return ytIDs, nil
+}

@@ -18,6 +18,7 @@ type DBClient interface {
 	GetSongByKey(key string) (Song, bool, error)
 	DeleteSongByID(songID uint32) error
 	DeleteCollection(collectionName string) error
+		GetAllYouTubeIDs() ([]string, error)
 }
 
 type Song struct {
