@@ -5,6 +5,7 @@ import 'package:client/repository/socket_repository.dart';
 import 'package:client/services/fingerprint_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:client/services/audio_service.dart';
+import 'dart:async';
 
 // State class for music recognition
 class MusicRecognitionState {
@@ -49,6 +50,9 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
   final AudioService _audioService;
   final FingerprintService _fingerprintService;
 
+  Timer? _matchTimeoutTimer;
+  bool _waitingForMatch = false;
+
   MusicRecognitionNotifier(
     this._socketRepository,
     this._audioService,
@@ -61,22 +65,29 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
   void _initializeSocketListeners() {
     _socketRepository.initializeListeners(
       onMatches: (match) {
-        if (match.isEmpty) {
-          print('No matches found');
+        if (_waitingForMatch) {
+          _matchTimeoutTimer?.cancel();
+          _waitingForMatch = false;
+          if (match.isEmpty) {
+            print('No matches found');
+            state = state.copyWith(
+              isLoading: false,
+              isListening: false,
+              error: 'No matches found',
+            );
+            return;
+          }
           state = state.copyWith(
+            match: match,
             isLoading: false,
             isListening: false,
-            error: 'No matches found',
           );
-          return;
         }
-        state = state.copyWith(
-          match: match,
-          isLoading: false,
-          isListening: false,
-        );
       },
       onDownloadStatus: (status) {
+        // if (status.message.contains("already exists")) {
+        //   return;
+        // }
         state = state.copyWith(lastStatus: status);
       },
       onTotalSongs: (totalSongs) {
@@ -172,6 +183,45 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
       );
     }
   }
+  // Replace the clearMatch method in MusicRecognitionNotifier
+
+  void clearMatch() {
+    print('Clearing match and resetting state...');
+
+    // Cancel any pending timers
+    _matchTimeoutTimer?.cancel();
+    _waitingForMatch = false;
+
+    // Reset state to initial values
+    state = state.copyWith(
+      match: null,
+      isLoading: false,
+      isListening: false,
+      error: null,
+      lastStatus: null,
+    );
+
+    print('Match cleared successfully');
+  }
+
+  // Also add this method for complete reset
+  void resetToInitialState() {
+    print('Resetting to initial state...');
+
+    // Cancel any pending operations
+    _matchTimeoutTimer?.cancel();
+    _waitingForMatch = false;
+
+    // Cancel any ongoing recording
+    _audioService.cancelRecording().catchError((e) {
+      print('Error cancelling recording during reset: $e');
+    });
+
+    // Reset to completely clean state
+    state = const MusicRecognitionState();
+
+    print('Reset to initial state complete');
+  }
 
   Future<void> cancelRecognition() async {
     try {
@@ -223,46 +273,26 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
       print('Sending recording data to backend...');
       _socketRepository.sendRecording(recordData);
 
-      // Generate fingerprint
-      print('Generating fingerprint...');
-      final fingerprintResult = await _fingerprintService.generateFingerprint(
-        filePath,
-      );
-      print('Fingerprint result: $fingerprintResult');
-
-      if (fingerprintResult['error'] == 0) {
-        final fingerprints = (fingerprintResult['data'] as List)
-            .map((json) => FingerprintModel.fromJson(json))
-            .toList();
-
-        if (fingerprints.isEmpty) {
-          throw Exception('No fingerprints generated from audio');
+      // Add timeout logic
+      _waitingForMatch = true;
+      _matchTimeoutTimer?.cancel();
+      _matchTimeoutTimer = Timer(const Duration(seconds: 30), () {
+        if (_waitingForMatch) {
+          _waitingForMatch = false;
+          state = state.copyWith(
+            isLoading: false,
+            isListening: false,
+            error: 'No match found (timeout)',
+          );
         }
+      });
 
-        // Format for backend
-        final fingerprintMap = _fingerprintService.formatFingerprintForBackend(
-          fingerprints,
-        );
-        print('Fingerprint data formatted: ${fingerprintMap.toString()}');
-
-        // Send to backend
-        print('Sending fingerprint to backend...');
-        _socketRepository.sendFingerprint(fingerprintMap);
-
-        // !Will wait infinitely for matches from socket
-        // Update state - processing complete, waiting for results
-        state = state.copyWith(
-          isLoading: true, // Keep loading until we get matches from socket
-          isListening: false,
-          error: null,
-        );
-
-        print('Processing completed successfully, waiting for matches...');
-      } else {
-        final errorMessage =
-            fingerprintResult['message'] ?? 'Unknown fingerprint error';
-        throw Exception('Fingerprint generation failed: $errorMessage');
-      }
+      // Update state - processing complete, waiting for results
+      state = state.copyWith(
+        isLoading: true, // Keep loading until we get matches or timeout
+        isListening: false,
+        error: null,
+      );
     } catch (e) {
       print('Error processing recording: $e');
       state = state.copyWith(
@@ -276,12 +306,6 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
   void clearError() {
     if (state.error != null) {
       state = state.copyWith(error: null);
-    }
-  }
-
-  void clearMatch() {
-    if (state.match != null) {
-      state = state.copyWith(match: null);
     }
   }
 

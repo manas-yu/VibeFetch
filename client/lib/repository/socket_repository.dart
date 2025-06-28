@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:client/repository/clients/socket_client.dart';
 import 'package:client/models/download_status.dart';
-import 'package:client/models/match_model.dart';
 import 'package:client/models/recording_data.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 
@@ -23,7 +22,8 @@ class SocketRepository {
     _socketClient.on('matches', (data) {
       // data will be just a string
       final matchString = data as String;
-      print('Received match string: ' + matchString);
+      print('Received match string: $data');
+      print('Received match string: ' + matchString + data);
       onMatches(matchString);
     });
 
@@ -41,16 +41,6 @@ class SocketRepository {
       final totalSongs = data as int;
       onTotalSongs(totalSongs);
       print('Total songs count: $totalSongs');
-    });
-  }
-
-  void listenYtIds({required Function(List<String>) onYtIds}) {
-    _socketClient.on('allYouTubeIDs', (data) {
-      // data is a JSON-encoded list of strings
-      final statusJson = data as String;
-      final List<dynamic> decoded = jsonDecode(statusJson);
-      final ytIds = decoded.map((e) => e.toString()).toList();
-      onYtIds(ytIds);
     });
   }
 
@@ -73,9 +63,30 @@ class SocketRepository {
     _socketClient.emit('newRecording', recordJson);
   }
 
+  void listenYtIds({required Function(List<String>) onYtIds}) {
+    _socketClient.on('allYouTubeIDs', (data) {
+      try {
+        List<String> ytIds;
+        if (data is String) {
+          final decoded = jsonDecode(data);
+          ytIds = List<String>.from(decoded.map((e) => e.toString()));
+        } else if (data is List) {
+          ytIds = List<String>.from(data.map((e) => e.toString()));
+        } else {
+          ytIds = [];
+        }
+        onYtIds(ytIds);
+      } catch (e) {
+        print('Error parsing YouTube IDs: $e');
+        onYtIds([]); // Return empty list on error
+      }
+    });
+  }
+
+  // Get all YouTube IDs
   void getAllYTIds() {
-    print("sending request for yt ids");
-    _socketClient.emit('allYouTubeIDs');
+    print("Sending request for YouTube IDs");
+    _socketClient.emit('getAllYouTubeIDs');
   }
 
   // Add song from URL (for admin functionality)

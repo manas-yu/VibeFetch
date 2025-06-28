@@ -316,6 +316,8 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		}
 	}
 	trackInfo, err := spotify.TrackInfo(spotifyURL)
+	fmt.Println("Track info: ", trackInfo)
+	fmt.Println(spotifyURL)
 	if err != nil {
 		if len(err.Error()) <= 25 {
 			socket.Emit("downloadStatus", downloadStatus("error", err.Error()))
@@ -333,22 +335,6 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		fmt.Errorf("Log - error connecting to DB: %d", err)
 	}
 	defer db.Close()
-
-	song, _, err := db.GetSongByKey(utils.GenerateSongKey(trackInfo.Title, trackInfo.Artist))
-	socket.Emit("matches", song.YouTubeID)
-	if err == nil {
-
-		statusMsg := fmt.Sprintf(
-			"'%s' by '%s' already exists in the database (https://www.youtube.com/watch?v=%s)",
-			song.Title, song.Artist, song.YouTubeID)
-		socket.Emit("downloadStatus", downloadStatus("error", statusMsg))
-		return
-
-	} else {
-		err := xerrors.New(err)
-		logger.ErrorContext(ctx, "failed to get song by key.", slog.Any("error", err))
-	}
-
 	totalDownloads, err := spotify.DlSingleTrack(spotifyURL, SONGS_DIR)
 	if err != nil {
 		if len(err.Error()) <= 25 {
@@ -369,6 +355,41 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		statusMsg = fmt.Sprintf("'%s' by '%s' was downloaded", trackInfo.Title, trackInfo.Artist)
 		socket.Emit("downloadStatus", downloadStatus("success", statusMsg))
 	}
+
+	song, _, err := db.GetSongByKey(utils.GenerateSongKey(trackInfo.Title, trackInfo.Artist))
+	print("Song key: " + utils.GenerateSongKey(trackInfo.Title, trackInfo.Artist) + "\n" + song.YouTubeID)
+	fmt.Print("Song YouTube ID: " + song.YouTubeID + "\n")
+	socket.Emit("matches", song.YouTubeID)
+	if err == nil {
+
+		socket.Emit("downloadStatus", downloadStatus("info", "You have searched this earlier!"))
+		return
+
+	} else {
+		err := xerrors.New(err)
+		logger.ErrorContext(ctx, "failed to get song by key.", slog.Any("error", err))
+	}
+
+	// totalDownloads, err := spotify.DlSingleTrack(spotifyURL, SONGS_DIR)
+	// if err != nil {
+	// 	if len(err.Error()) <= 25 {
+	// 		socket.Emit("downloadStatus", downloadStatus("error", err.Error()))
+	// 		logger.Info(err.Error())
+	// 	} else {
+	// 		err := xerrors.New(err)
+	// 		logger.ErrorContext(ctx, "error getting album info", slog.Any("error", err))
+	// 	}
+	// 	return
+	// }
+
+	// statusMsg := ""
+	// if totalDownloads != 1 {
+	// 	statusMsg = fmt.Sprintf("'%s' by '%s' failed to download", trackInfo.Title, trackInfo.Artist)
+	// 	socket.Emit("downloadStatus", downloadStatus("error", statusMsg))
+	// } else {
+	// 	statusMsg = fmt.Sprintf("'%s' by '%s' was downloaded", trackInfo.Title, trackInfo.Artist)
+	// 	socket.Emit("downloadStatus", downloadStatus("success", statusMsg))
+	// }
 	fmt.Println(song.YouTubeID)
 
 }

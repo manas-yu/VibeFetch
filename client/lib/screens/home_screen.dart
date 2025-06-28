@@ -369,10 +369,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    musicNotifier.clearMatch();
-                    _youtubeController?.dispose();
-                    _youtubeController = null;
+                  // In the Search Again button onPressed:
+                  onPressed: () async {
+                    try {
+                      // Use the more comprehensive reset
+                      musicNotifier.resetToInitialState();
+
+                      // Dispose and reset YouTube controller
+                      _youtubeController?.dispose();
+                      _youtubeController = null;
+
+                      // Force a rebuild
+                      if (mounted) {
+                        setState(() {});
+                      }
+
+                      print('Search Again - complete reset performed');
+                    } catch (e) {
+                      print('Error in Search Again: $e');
+                      // Error handling code...
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF089af8),
@@ -394,9 +410,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    final videoId = musicState.match!;
-                    final youtubeUrl =
-                        'https://www.youtube.com/watch?v=$videoId';
                     // You can implement share functionality here
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -584,18 +597,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ? Colors.grey.shade600
             : const Color(0xFF089af8),
         elevation: 8,
-        icon: musicState.isLoading
-            ? SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Colors.white.withOpacity(0.7),
-                  ),
-                ),
-              )
-            : const Icon(Icons.add_circle_outline, color: Colors.white),
+        icon: const Icon(Icons.add_circle_outline, color: Colors.white),
         label: Text(
           'Add Song',
           style: const TextStyle(
@@ -744,7 +746,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ElevatedButton(
               onPressed: isLoading
                   ? null
-                  : () {
+                  : () async {
                       final url = urlController.text.trim();
                       if (url.isEmpty) {
                         _showErrorSnackBar(context, 'Please enter a URL');
@@ -759,8 +761,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         return;
                       }
 
-                      notifier.downloadSong(url);
-                      Navigator.of(context).pop();
+                      // Save the dialog context before the async gap
+                      final navigator = Navigator.of(context);
+                      await notifier.downloadSong(url);
+                      navigator.pop();
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF089af8),
