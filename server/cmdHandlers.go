@@ -76,6 +76,32 @@ func find(filePath string) {
 	fmt.Printf("\nFinal prediction: %s by %s , score: %.2f\n",
 		topMatch.SongTitle, topMatch.SongArtist, topMatch.Score)
 }
+func find2(filePath string) ([]shazam.Match, error) {
+	wavInfo, err := wav.ReadWavInfo(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading wave info: %w", err)
+	}
+
+	samples, err := wav.WavBytesToSamples(wavInfo.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error converting to samples: %w", err)
+	}
+
+	matches, _, err := shazam.FindMatches(samples, wavInfo.Duration, wavInfo.SampleRate)
+	if err != nil {
+		return nil, fmt.Errorf("error finding matches: %w", err)
+	}
+
+	if len(matches) == 0 {
+		return nil, nil // no matches found
+	}
+
+	if len(matches) > 20 {
+		return matches[:20], nil
+	}
+
+	return matches, nil
+}
 
 func download(spotifyURL string) {
 	err := utils.CreateFolder(SONGS_DIR)
