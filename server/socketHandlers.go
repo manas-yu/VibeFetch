@@ -182,7 +182,7 @@ func handleSongDownload(socket socketio.Conn, spotifyURL string) {
 func handleNewRecording(socket socketio.Conn, recordData string) {
 	logger := utils.GetLogger()
 	ctx := context.Background()
-	print("handleNewRecording called\n" + recordData + "\n")
+	print("handleNewRecording called\n")
 	var recData models.RecordData
 	if err := json.Unmarshal([]byte(recordData), &recData); err != nil {
 		err := xerrors.New(err)
@@ -202,7 +202,7 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		now.Day(), now.Month(), now.Year(),
 	)
 	filePath := "recordings/" + fileName
-
+	
 	decodedAudioData, err := base64.StdEncoding.DecodeString(recData.Audio)
 	if err != nil {
 		err := xerrors.New(err)
@@ -214,6 +214,20 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		err := xerrors.New(err)
 		logger.ErrorContext(ctx, "Failed write wav file.", slog.Any("error", err))
 	}
+	matches,_:= find2(filePath)
+	jsonData, err := json.Marshal(matches)
+	
+	if len(matches) > 10 {
+		jsonData, _ = json.Marshal(matches[:10])
+	}
+
+	if err != nil {
+		err := xerrors.New(err)
+		logger.ErrorContext(ctx, "failed to marshal matches.", slog.Any("error", err))
+		return
+	}
+
+	socket.Emit("newRecording", string(jsonData))
 }
 
 func handleNewFingerprint(socket socketio.Conn, fingerprintData string) {
