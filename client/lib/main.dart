@@ -6,15 +6,34 @@ import 'package:permission_handler/permission_handler.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Request microphone permission on app start
+  // Request permissions on app start
   await _requestPermissions();
 
   runApp(const ProviderScope(child: MyApp()));
 }
 
 Future<void> _requestPermissions() async {
+  // Request microphone permission
   await Permission.microphone.request();
+
+  // Request storage permission
   await Permission.storage.request();
+
+  // For Android 13+ (API 33+), request specific media permissions
+  if (await Permission.photos.isDenied) {
+    await Permission.photos.request();
+  }
+
+  if (await Permission.videos.isDenied) {
+    await Permission.videos.request();
+  }
+
+  if (await Permission.audio.isDenied) {
+    await Permission.audio.request();
+  }
+
+  // Note: System audio recording permission is handled by the SystemAudioRecorder plugin
+  // when SystemAudioRecorder.requestRecord() is called
 }
 
 class MyApp extends StatelessWidget {

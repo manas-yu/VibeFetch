@@ -15,7 +15,6 @@ class MusicRecognitionState {
   final bool isLoading;
   final String? error;
   final DownloadStatusModel? lastStatus;
-  final bool isSystemAudioRecording;
 
   const MusicRecognitionState({
     this.isListening = false,
@@ -24,7 +23,6 @@ class MusicRecognitionState {
     this.isLoading = false,
     this.error,
     this.lastStatus,
-    this.isSystemAudioRecording = false,
   });
 
   MusicRecognitionState copyWith({
@@ -34,7 +32,6 @@ class MusicRecognitionState {
     bool? isLoading,
     String? error,
     DownloadStatusModel? lastStatus,
-    bool? isSystemAudioRecording,
   }) {
     return MusicRecognitionState(
       isListening: isListening ?? this.isListening,
@@ -43,8 +40,6 @@ class MusicRecognitionState {
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
       lastStatus: lastStatus ?? this.lastStatus,
-      isSystemAudioRecording:
-          isSystemAudioRecording ?? this.isSystemAudioRecording,
     );
   }
 }
@@ -124,9 +119,9 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
         matches: [],
       );
 
-      // Start recording with auto-stop callback
+      // Start microphone recording with auto-stop callback
       await _audioService.startRecording(
-        durationSeconds: 10,
+        durationSeconds: 20,
         onAutoStop: () {
           // This will be called when the timer expires
           print('Auto-stop triggered, calling stopRecognition');
@@ -134,7 +129,7 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
         },
       );
 
-      print('Recording started successfully');
+      print('Microphone recording started successfully');
     } catch (e) {
       print('Error starting recognition: $e');
       state = state.copyWith(
@@ -143,10 +138,6 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
         error: 'Failed to start recording: ${e.toString()}',
       );
     }
-  }
-
-  void toggleAudioState(int index) {
-    state = state.copyWith(isSystemAudioRecording: index == 0);
   }
 
   Future<void> stopRecognition() async {
@@ -162,11 +153,13 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
       // Update state to show we're processing
       state = state.copyWith(isListening: false, isLoading: true, error: null);
 
+      // Stop recording
       final recordingPath = await _audioService.stopRecording();
-      print('Recording stopped, file path: $recordingPath');
+
+      print('Microphone recording stopped, file path: $recordingPath');
 
       if (recordingPath != null && recordingPath.isNotEmpty) {
-        print('Processing recording at: $recordingPath');
+        print('Processing microphone recording at: $recordingPath');
         await _processRecording(recordingPath);
       } else {
         throw Exception('Failed to get valid recording path');
