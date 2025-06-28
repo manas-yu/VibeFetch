@@ -4,15 +4,47 @@ import 'package:client/widgets/animated_number.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:client/providers/music_recognition_provider.dart';
-import 'package:client/widgets/match_list.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  YoutubePlayerController? _youtubeController;
+
+  @override
+  void dispose() {
+    _youtubeController?.dispose();
+    super.dispose();
+  }
+
+  void _initializeYouTubePlayer(String videoId) {
+    _youtubeController?.dispose();
+    _youtubeController = YoutubePlayerController(
+      initialVideoId: videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: false,
+        mute: false,
+        enableCaption: true,
+        captionLanguage: 'en',
+        showLiveFullscreenButton: true,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final musicState = ref.watch(musicRecognitionProvider);
     final musicNotifier = ref.watch(musicRecognitionProvider.notifier);
+
+    // Initialize YouTube player when match is found
+    if (musicState.match != null && _youtubeController == null) {
+      _initializeYouTubePlayer(musicState.match!);
+    }
 
     // Show error if any
     ref.listen(errorProvider, (previous, next) {
@@ -78,7 +110,7 @@ class HomeScreen extends ConsumerWidget {
       }
     });
 
-    final hasMatches = musicState.matches.isNotEmpty;
+    final hasMatch = musicState.match != null;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -211,10 +243,10 @@ class HomeScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Container(
                 constraints: BoxConstraints(
-                  minHeight: hasMatches ? 0 : screenHeight * 0.7,
+                  minHeight: hasMatch ? 0 : screenHeight * 0.7,
                 ),
-                child: hasMatches
-                    ? _buildMatchesView(musicState)
+                child: hasMatch
+                    ? _buildMatchView(musicState, musicNotifier)
                     : _buildListeningView(context, musicState, musicNotifier),
               ),
             ),
@@ -232,11 +264,179 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMatchesView(MusicRecognitionState musicState) {
+  Widget _buildMatchView(
+    MusicRecognitionState musicState,
+    MusicRecognitionNotifier musicNotifier,
+  ) {
     return Column(
       children: [
         const SizedBox(height: 20),
-        MatchListWidget(matches: musicState.matches),
+
+        // Success message
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.green.withOpacity(0.15),
+                Colors.green.withOpacity(0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Match Found!',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your music has been identified',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 30),
+
+        // YouTube Player
+        if (_youtubeController != null)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: YoutubePlayer(
+                controller: _youtubeController!,
+                showVideoProgressIndicator: true,
+                progressIndicatorColor: const Color(0xFF089af8),
+                progressColors: const ProgressBarColors(
+                  playedColor: Color(0xFF089af8),
+                  handleColor: Color(0xFF4FC3F7),
+                ),
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 30),
+
+        // Action buttons
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    musicNotifier.clearMatch();
+                    _youtubeController?.dispose();
+                    _youtubeController = null;
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF089af8),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                  ),
+                  icon: const Icon(Icons.search, size: 20),
+                  label: const Text(
+                    'Search Again',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final videoId = musicState.match!;
+                    final youtubeUrl =
+                        'https://www.youtube.com/watch?v=$videoId';
+                    // You can implement share functionality here
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.share, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Video URL copied!')),
+                          ],
+                        ),
+                        backgroundColor: Colors.green.shade700,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.share, size: 20),
+                  label: const Text(
+                    'Share',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
         const SizedBox(height: 100), // Space for FAB
       ],
     );

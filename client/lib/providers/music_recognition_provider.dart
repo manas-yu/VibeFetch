@@ -4,13 +4,12 @@ import 'package:client/models/recording_data.dart';
 import 'package:client/repository/socket_repository.dart';
 import 'package:client/services/fingerprint_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:client/models/match_model.dart';
 import 'package:client/services/audio_service.dart';
 
 // State class for music recognition
 class MusicRecognitionState {
   final bool isListening;
-  final List<MatchModel> matches;
+  final String? match;
   final int totalSongs;
   final bool isLoading;
   final String? error;
@@ -18,7 +17,7 @@ class MusicRecognitionState {
 
   const MusicRecognitionState({
     this.isListening = false,
-    this.matches = const [],
+    this.match,
     this.totalSongs = 0,
     this.isLoading = false,
     this.error,
@@ -27,7 +26,7 @@ class MusicRecognitionState {
 
   MusicRecognitionState copyWith({
     bool? isListening,
-    List<MatchModel>? matches,
+    String? match,
     int? totalSongs,
     bool? isLoading,
     String? error,
@@ -35,7 +34,7 @@ class MusicRecognitionState {
   }) {
     return MusicRecognitionState(
       isListening: isListening ?? this.isListening,
-      matches: matches ?? this.matches,
+      match: match ?? this.match,
       totalSongs: totalSongs ?? this.totalSongs,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
@@ -61,8 +60,8 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
 
   void _initializeSocketListeners() {
     _socketRepository.initializeListeners(
-      onMatches: (matches) {
-        if (matches.isEmpty) {
+      onMatches: (match) {
+        if (match.isEmpty) {
           print('No matches found');
           state = state.copyWith(
             isLoading: false,
@@ -72,7 +71,7 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
           return;
         }
         state = state.copyWith(
-          matches: matches,
+          match: match,
           isLoading: false,
           isListening: false,
         );
@@ -116,7 +115,7 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
         isListening: true,
         isLoading: false,
         error: null,
-        matches: [],
+        match: null,
       );
 
       // Start microphone recording with auto-stop callback
@@ -280,9 +279,9 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
     }
   }
 
-  void clearMatches() {
-    if (state.matches.isNotEmpty) {
-      state = state.copyWith(matches: []);
+  void clearMatch() {
+    if (state.match != null) {
+      state = state.copyWith(match: null);
     }
   }
 
@@ -332,8 +331,8 @@ final isListeningProvider = Provider<bool>((ref) {
   return ref.watch(musicRecognitionProvider).isListening;
 });
 
-final matchesProvider = Provider<List<MatchModel>>((ref) {
-  return ref.watch(musicRecognitionProvider).matches;
+final matchProvider = Provider<String?>((ref) {
+  return ref.watch(musicRecognitionProvider).match;
 });
 
 final totalSongsProvider = Provider<int>((ref) {

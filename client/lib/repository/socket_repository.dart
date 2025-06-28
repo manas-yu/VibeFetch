@@ -14,23 +14,17 @@ class SocketRepository {
 
   // Initialize socket listeners
   void initializeListeners({
-    required Function(List<MatchModel>) onMatches,
+    required Function(String) onMatches,
     required Function(DownloadStatusModel) onDownloadStatus,
     required Function(int) onTotalSongs,
   }) {
     print('Initializing socket listeners...');
     // Listen for matches from fingerprint recognition
     _socketClient.on('matches', (data) {
-      final matchesJson = data as String;
-      // Use a logging framework in production, e.g., logger
-      // logger.i(matchesJson);
-      final List<dynamic> decoded = jsonDecode(matchesJson);
-      print(decoded);
-      final matches = decoded
-          .map((e) => MatchModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      // logger.i('Received matches: $matches');
-      onMatches(matches);
+      // data will be just a string
+      final matchString = data as String;
+      print('Received match string: ' + matchString);
+      onMatches(matchString);
     });
 
     // Listen for download status messages
@@ -47,6 +41,16 @@ class SocketRepository {
       final totalSongs = data as int;
       onTotalSongs(totalSongs);
       print('Total songs count: $totalSongs');
+    });
+  }
+
+  void listenYtIds({required Function(List<String>) onYtIds}) {
+    _socketClient.on('allYouTubeIDs', (data) {
+      // data is a JSON-encoded list of strings
+      final statusJson = data as String;
+      final List<dynamic> decoded = jsonDecode(statusJson);
+      final ytIds = decoded.map((e) => e.toString()).toList();
+      onYtIds(ytIds);
     });
   }
 
@@ -67,6 +71,11 @@ class SocketRepository {
     final recordJson = jsonEncode(recordData.toJson());
     print("recording data in socket clinet:" + recordJson);
     _socketClient.emit('newRecording', recordJson);
+  }
+
+  void getAllYTIds() {
+    print("sending request for yt ids");
+    _socketClient.emit('allYouTubeIDs');
   }
 
   // Add song from URL (for admin functionality)
