@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:client/providers/music_recognition_provider.dart';
 import 'package:client/widgets/match_card.dart';
-import 'package:toggle_switch/toggle_switch.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -63,9 +62,23 @@ class HomeScreen extends ConsumerWidget {
                   musicState.isLoading,
                 );
               },
-        backgroundColor: musicState.isLoading ? Colors.grey : null,
-        child: const Icon(Icons.add),
+        backgroundColor: musicState.isLoading
+            ? Colors.blueGrey.shade700
+            : const Color.fromARGB(255, 70, 156, 166), // Bright on dark blue
+        elevation: 6,
+        tooltip: 'Add Song',
+        child: musicState.isLoading
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black87),
+                ),
+              )
+            : const Icon(Icons.add, size: 28, color: Colors.black87),
       ),
+
       backgroundColor: const Color(0xFF042442),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -79,7 +92,7 @@ class HomeScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      '!Shazam',
+                      'VibeFetch',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -87,17 +100,45 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        AnimatedNumber(
-                          value: musicState.totalSongs,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                        ),
-                        const Text(
-                          ' Songs',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.music_note,
+                                color: Colors.white70,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 4),
+                              AnimatedNumber(
+                                value: musicState.totalSongs,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Songs',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -158,30 +199,6 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
 
-                  const SizedBox(height: 20),
-                  ToggleSwitch(
-                    minWidth: 90.0,
-                    minHeight: 50.0,
-                    initialLabelIndex: musicState.isSystemAudioRecording
-                        ? 0
-                        : 1,
-                    cornerRadius: 20.0,
-                    activeFgColor: Colors.white,
-                    inactiveBgColor: Colors.grey,
-                    inactiveFgColor: Colors.white,
-                    totalSwitches: 2,
-                    icons: [Icons.laptop, Icons.mic],
-                    iconSize: 30.0,
-                    activeBgColors: [
-                      [Colors.black45, Colors.black26],
-                      [Colors.yellow, Colors.orange],
-                    ],
-                    animate: true,
-                    curve: Curves.bounceInOut,
-                    onToggle: (index) {
-                      musicNotifier.toggleAudioState(index ?? 1);
-                    },
-                  ),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -266,31 +283,66 @@ class HomeScreen extends ConsumerWidget {
       barrierDismissible: !isLoading,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Add Song from URL'),
+          backgroundColor: const Color(0xFF0D1B2A), // deep dark blue
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Add Spotify Song',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
                 controller: urlController,
-                decoration: const InputDecoration(
-                  hintText: 'Paste YouTube URL here',
-                  border: OutlineInputBorder(),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Paste Spotify URL',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white10,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Colors.cyanAccent,
+                      width: 2,
+                    ),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.grey),
+                  ),
                 ),
                 autofocus: true,
                 enabled: !isLoading,
-                maxLines: 2,
+                maxLines: 1,
               ),
+
               if (isLoading) ...[
-                const SizedBox(height: 16),
-                const Row(
-                  children: [
+                const SizedBox(height: 20),
+                Row(
+                  children: const [
                     SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.cyanAccent,
+                        ),
+                      ),
                     ),
-                    SizedBox(width: 8),
-                    Text('Adding song...'),
+                    SizedBox(width: 12),
+                    Text(
+                      'Adding song...',
+                      style: TextStyle(color: Colors.white70),
+                    ),
                   ],
                 ),
               ],
@@ -299,6 +351,7 @@ class HomeScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(foregroundColor: Colors.white70),
               child: const Text('Cancel'),
             ),
             TextButton(
@@ -316,11 +369,10 @@ class HomeScreen extends ConsumerWidget {
                         return;
                       }
 
-                      // Basic URL validation
                       if (!url.contains('spotify')) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Please enter a valid YouTube URL'),
+                            content: Text('Please enter a valid Spotify URL'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -330,6 +382,7 @@ class HomeScreen extends ConsumerWidget {
                       notifier.downloadSong(url);
                       Navigator.of(context).pop();
                     },
+              style: TextButton.styleFrom(foregroundColor: Colors.cyanAccent),
               child: const Text('Add Song'),
             ),
           ],
@@ -340,7 +393,7 @@ class HomeScreen extends ConsumerWidget {
 
   String _getStatusText(MusicRecognitionState state) {
     if (state.isListening) {
-      return 'Listening...\n(Recording will auto-stop in 10 seconds)';
+      return 'Listening...\n(Recording will auto-stop in 20 seconds)';
     } else if (state.isLoading) {
       return 'Processing audio...\nPlease wait';
     } else if (state.matches.isNotEmpty) {
