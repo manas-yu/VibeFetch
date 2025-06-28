@@ -202,7 +202,7 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		now.Day(), now.Month(), now.Year(),
 	)
 	filePath := "recordings/" + fileName
-	
+
 	decodedAudioData, err := base64.StdEncoding.DecodeString(recData.Audio)
 	if err != nil {
 		err := xerrors.New(err)
@@ -214,9 +214,9 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		err := xerrors.New(err)
 		logger.ErrorContext(ctx, "Failed write wav file.", slog.Any("error", err))
 	}
-	matches,_:= find2(filePath)
+	matches, _ := find2(filePath)
 	jsonData, err := json.Marshal(matches)
-	
+
 	if len(matches) > 10 {
 		jsonData, _ = json.Marshal(matches[:10])
 	}
@@ -227,7 +227,7 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		return
 	}
 
-	socket.Emit("newRecording", string(jsonData))
+	socket.Emit("matches", string(jsonData))
 }
 
 func handleNewFingerprint(socket socketio.Conn, fingerprintData string) {

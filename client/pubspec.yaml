@@ -43,8 +43,6 @@ dependencies:
   record: ^6.0.0
   toggle_switch: ^2.3.0
   youtube_player_flutter: ^9.1.1
-  dio: ^5.8.0+1
-  acr_cloud_sdk: ^2.0.2
 
 dev_dependencies:
   flutter_test:
