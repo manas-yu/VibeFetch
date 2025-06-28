@@ -30,8 +30,11 @@ class AudioService {
         const config = RecordConfig(
           encoder: AudioEncoder.wav,
           sampleRate: 44100,
-          bitRate: 128000,
+          bitRate: 1411200,
           numChannels: 1, // Mono recording
+          autoGain: true,
+          echoCancel: true,
+          noiseSuppress: true,
         );
 
         await _recorder.start(config, path: _recordingPath!);

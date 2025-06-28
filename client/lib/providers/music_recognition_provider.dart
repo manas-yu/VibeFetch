@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:client/models/download_status.dart';
 import 'package:client/models/fingerprint_data.dart';
 import 'package:client/models/recording_data.dart';
@@ -50,6 +51,10 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
   final AudioService _audioService;
   final FingerprintService _fingerprintService;
 
+  // Timeout logic fields
+  bool _waitingForMatch = false;
+  Timer? _matchTimeoutTimer;
+
   MusicRecognitionNotifier(
     this._socketRepository,
     this._audioService,
@@ -62,20 +67,25 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
   void _initializeSocketListeners() {
     _socketRepository.initializeListeners(
       onMatches: (matches) {
-        if (matches.isEmpty) {
-          print('No matches found');
+        if (_waitingForMatch) {
+          _matchTimeoutTimer?.cancel();
+          _waitingForMatch = false;
+          if (matches.isEmpty) {
+            print('No matches found');
+            state = state.copyWith(
+              isLoading: false,
+              isListening: false,
+              error: 'No matches found',
+            );
+            return;
+          }
           state = state.copyWith(
+            matches: matches,
             isLoading: false,
             isListening: false,
-            error: 'No matches found',
+            error: null,
           );
-          return;
         }
-        state = state.copyWith(
-          matches: matches,
-          isLoading: false,
-          isListening: false,
-        );
       },
       onDownloadStatus: (status) {
         state = state.copyWith(lastStatus: status);
@@ -219,12 +229,6 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
         sampleSize: metadata['sampleSize'],
         duration: metadata['duration'],
       );
-
-      // Send recording to backend
-      print('Sending recording data to backend...');
-      _socketRepository.sendRecording(recordData);
-
-      // Generate fingerprint
       print('Generating fingerprint...');
       final fingerprintResult = await _fingerprintService.generateFingerprint(
         filePath,
@@ -264,6 +268,32 @@ class MusicRecognitionNotifier extends StateNotifier<MusicRecognitionState> {
             fingerprintResult['message'] ?? 'Unknown fingerprint error';
         throw Exception('Fingerprint generation failed: $errorMessage');
       }
+      // Send recording to backend
+      print('Sending recording data to backend...');
+      _socketRepository.sendRecording(recordData);
+
+      // Set up timeout logic
+      _waitingForMatch = true;
+      _matchTimeoutTimer?.cancel();
+      _matchTimeoutTimer = Timer(const Duration(seconds: 10), () {
+        if (_waitingForMatch) {
+          _waitingForMatch = false;
+          state = state.copyWith(
+            isLoading: false,
+            isListening: false,
+            error: 'No match found (timeout)',
+          );
+        }
+      });
+
+      // Update state - processing complete, waiting for results
+      state = state.copyWith(
+        isLoading: true, // Keep loading until we get matches or timeout
+        isListening: false,
+        error: null,
+      );
+
+      print('Processing completed successfully, waiting for matches...');
     } catch (e) {
       print('Error processing recording: $e');
       state = state.copyWith(

@@ -1,51 +1,52 @@
 class MatchModel {
-  final String? title;
-  final String? artist;
-  final String? album;
-  final String? youtubeUrl;
-  final String? thumbnailUrl;
-  final double? confidence;
-  final int? offsetSeconds;
-  final String? spotifyUrl;
-  final String? appleMusicUrl;
+  final int songId;
+  final String songTitle;
+  final String songArtist;
+  final String youtubeId;
+  final int timestamp;
+  final double score;
 
   MatchModel({
-    this.title,
-    this.artist,
-    this.album,
-    this.youtubeUrl,
-    this.thumbnailUrl,
-    this.confidence,
-    this.offsetSeconds,
-    this.spotifyUrl,
-    this.appleMusicUrl,
+    required this.songId,
+    required this.songTitle,
+    required this.songArtist,
+    required this.youtubeId,
+    required this.timestamp,
+    required this.score,
   });
 
   factory MatchModel.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic value) {
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    double parseDouble(dynamic value) {
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return MatchModel(
-      title: json['title'] as String?,
-      artist: json['artist'] as String?,
-      album: json['album'] as String?,
-      youtubeUrl: json['youtube_url'] as String?,
-      thumbnailUrl: json['thumbnail_url'] as String?,
-      confidence: (json['confidence'] as num?)?.toDouble(),
-      offsetSeconds: json['offset_seconds'] as int?,
-      spotifyUrl: json['spotify_url'] as String?,
-      appleMusicUrl: json['apple_music_url'] as String?,
+      songId: parseInt(json['SongID'] ?? json['song_id']),
+      songTitle: json['SongTitle'] ?? json['song_title'] ?? '',
+      songArtist: json['SongArtist'] ?? json['song_artist'] ?? '',
+      youtubeId: json['YouTubeID'] ?? json['youtube_id'] ?? '',
+      timestamp: parseInt(json['Timestamp'] ?? json['timestamp']),
+      score: parseDouble(json['Score'] ?? json['score']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'title': title,
-      'artist': artist,
-      'album': album,
-      'youtube_url': youtubeUrl,
-      'thumbnail_url': thumbnailUrl,
-      'confidence': confidence,
-      'offset_seconds': offsetSeconds,
-      'spotify_url': spotifyUrl,
-      'apple_music_url': appleMusicUrl,
+      'song_id': songId,
+      'song_title': songTitle,
+      'song_artist': songArtist,
+      'youtube_id': youtubeId,
+      'timestamp': timestamp,
+      'score': score,
     };
   }
 }

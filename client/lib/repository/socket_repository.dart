@@ -22,12 +22,14 @@ class SocketRepository {
     // Listen for matches from fingerprint recognition
     _socketClient.on('matches', (data) {
       final matchesJson = data as String;
-      final List<dynamic> matchesList = jsonDecode(matchesJson) ?? [];
-      final matches = matchesList
-          .map((match) => MatchModel.fromJson(match))
-          .take(5)
+      // Use a logging framework in production, e.g., logger
+      // logger.i(matchesJson);
+      final List<dynamic> decoded = jsonDecode(matchesJson);
+      print(decoded);
+      final matches = decoded
+          .map((e) => MatchModel.fromJson(e as Map<String, dynamic>))
           .toList();
-      print('Received matches: ${matches}');
+      // logger.i('Received matches: $matches');
       onMatches(matches);
     });
 
