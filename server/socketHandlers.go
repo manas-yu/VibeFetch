@@ -211,7 +211,7 @@ func handleSongDownload(socket socketio.Conn, spotifyURL string) {
 // 		now.Day(), now.Month(), now.Year(),
 // 	)
 // 	filePath := "recordings/" + fileName
-	
+
 // 	decodedAudioData, err := base64.StdEncoding.DecodeString(recData.Audio)
 // 	if err != nil {
 // 		err := xerrors.New(err)
@@ -225,7 +225,7 @@ func handleSongDownload(socket socketio.Conn, spotifyURL string) {
 // 	}
 // 	matches,_:= find2(filePath)
 // 	jsonData, err := json.Marshal(matches)
-	
+
 // 	if len(matches) > 10 {
 // 		jsonData, _ = json.Marshal(matches[:10])
 // 	}
@@ -238,7 +238,6 @@ func handleSongDownload(socket socketio.Conn, spotifyURL string) {
 
 // 	socket.Emit("matches", string(jsonData))
 // }
-
 
 func handleNewRecording(socket socketio.Conn, recordData string) {
 	logger := utils.GetLogger()
@@ -277,7 +276,7 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 	}
 	// matches,_:= find2(filePath)
 	// jsonData, err := json.Marshal(matches)
-	
+
 	// if len(matches) > 10 {
 	// 	jsonData, _ = json.Marshal(matches[:10])
 	// }
@@ -287,8 +286,8 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 	// 	logger.ErrorContext(ctx, "failed to marshal matches.", slog.Any("error", err))
 	// 	return
 	// }
-	response , err := IdentifyAudio(filePath)
-	fmt.Printf("%v\n",response)
+	response, err := IdentifyAudio(filePath)
+	fmt.Printf("%v\n", response)
 	if err != nil {
 		err := xerrors.New(err)
 		logger.ErrorContext(ctx, "cant get response.", slog.Any("error", err))
@@ -300,9 +299,6 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		return
 	}
 
-<<<<<<< HEAD
-	socket.Emit("matches", string(jsonData))
-=======
 	// Extract Spotify track ID
 	var spotifyURL string
 	if metadata, ok := parsed["metadata"].(map[string]interface{}); ok {
@@ -320,62 +316,61 @@ func handleNewRecording(socket socketio.Conn, recordData string) {
 		}
 	}
 	trackInfo, err := spotify.TrackInfo(spotifyURL)
-		if err != nil {
-			if len(err.Error()) <= 25 {
-				socket.Emit("downloadStatus", downloadStatus("error", err.Error()))
-				logger.Info(err.Error())
-			} else {
-				err := xerrors.New(err)
-				logger.ErrorContext(ctx, "error getting album info", slog.Any("error", err))
-			}
-			return
+	if err != nil {
+		if len(err.Error()) <= 25 {
+			socket.Emit("downloadStatus", downloadStatus("error", err.Error()))
+			logger.Info(err.Error())
+		} else {
+			err := xerrors.New(err)
+			logger.ErrorContext(ctx, "error getting album info", slog.Any("error", err))
 		}
+		return
+	}
 
-		// check if track already exist
-		db, err := db.NewDBClient()
-		if err != nil {
-			fmt.Errorf("Log - error connecting to DB: %d", err)
-		}
-		defer db.Close()
+	// check if track already exist
+	db, err := db.NewDBClient()
+	if err != nil {
+		fmt.Errorf("Log - error connecting to DB: %d", err)
+	}
+	defer db.Close()
 
-		song, _, err := db.GetSongByKey(utils.GenerateSongKey(trackInfo.Title, trackInfo.Artist))
-		socket.Emit("matches", song.YouTubeID)
-		if err == nil {
-			
+	song, _, err := db.GetSongByKey(utils.GenerateSongKey(trackInfo.Title, trackInfo.Artist))
+	socket.Emit("matches", song.YouTubeID)
+	if err == nil {
+
 		statusMsg := fmt.Sprintf(
 			"'%s' by '%s' already exists in the database (https://www.youtube.com/watch?v=%s)",
 			song.Title, song.Artist, song.YouTubeID)
 		socket.Emit("downloadStatus", downloadStatus("error", statusMsg))
 		return
-			
+
+	} else {
+		err := xerrors.New(err)
+		logger.ErrorContext(ctx, "failed to get song by key.", slog.Any("error", err))
+	}
+
+	totalDownloads, err := spotify.DlSingleTrack(spotifyURL, SONGS_DIR)
+	if err != nil {
+		if len(err.Error()) <= 25 {
+			socket.Emit("downloadStatus", downloadStatus("error", err.Error()))
+			logger.Info(err.Error())
 		} else {
 			err := xerrors.New(err)
-			logger.ErrorContext(ctx, "failed to get song by key.", slog.Any("error", err))
+			logger.ErrorContext(ctx, "error getting album info", slog.Any("error", err))
 		}
+		return
+	}
 
-		totalDownloads, err := spotify.DlSingleTrack(spotifyURL, SONGS_DIR)
-		if err != nil {
-			if len(err.Error()) <= 25 {
-				socket.Emit("downloadStatus", downloadStatus("error", err.Error()))
-				logger.Info(err.Error())
-			} else {
-				err := xerrors.New(err)
-				logger.ErrorContext(ctx, "error getting album info", slog.Any("error", err))
-			}
-			return
-		}
-
-		statusMsg := ""
-		if totalDownloads != 1 {
-			statusMsg = fmt.Sprintf("'%s' by '%s' failed to download", trackInfo.Title, trackInfo.Artist)
-			socket.Emit("downloadStatus", downloadStatus("error", statusMsg))
-		} else {
-			statusMsg = fmt.Sprintf("'%s' by '%s' was downloaded", trackInfo.Title, trackInfo.Artist)
-			socket.Emit("downloadStatus", downloadStatus("success", statusMsg))
-		}
+	statusMsg := ""
+	if totalDownloads != 1 {
+		statusMsg = fmt.Sprintf("'%s' by '%s' failed to download", trackInfo.Title, trackInfo.Artist)
+		socket.Emit("downloadStatus", downloadStatus("error", statusMsg))
+	} else {
+		statusMsg = fmt.Sprintf("'%s' by '%s' was downloaded", trackInfo.Title, trackInfo.Artist)
+		socket.Emit("downloadStatus", downloadStatus("success", statusMsg))
+	}
 	fmt.Println(song.YouTubeID)
-	
->>>>>>> d0c576eab4c5c66234b146346087de8ef33bc34b
+
 }
 
 func handleNewFingerprint(socket socketio.Conn, fingerprintData string) {
@@ -432,7 +427,6 @@ func handleAllYouTubeIDs(socket socketio.Conn) {
 
 	socket.Emit("allYouTubeIDs", ytIDs)
 }
-
 
 func IdentifyAudio(filePath string) (string, error) {
 	// Replace with your credentials and host
